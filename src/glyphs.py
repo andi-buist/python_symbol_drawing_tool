@@ -40,7 +40,7 @@ def pascal_row(n, memo={}):
     memo[n] = result
     return result
 
-def DrawStroke(canvas: Image, strokepath: list[tuple], thickness: float = 6.0):
+def DrawStroke(canvas: Image, strokepath: list[tuple[int,int]], thickness: float = 6.0):
     _active_canvas = canvas
 
     if not hasattr(_active_canvas, "margin"): raise AttributeError('canvas does not have attribute "margin"')
@@ -56,8 +56,10 @@ def DrawStroke(canvas: Image, strokepath: list[tuple], thickness: float = 6.0):
         _weighted_strokepath += [coord,] * _weighting
 
     _scaled_strokepath = []
+
     for i, x in enumerate(_weighted_strokepath):
-        _scaled_strokepath.append(tuple((canvas.margin + (x[n] * _canvas_fraction[n]) - (_canvas_fraction[n]/2)) for n in [0,1]))
+        _pos = tuple((canvas.margin + (x[n] * _canvas_fraction[n]) - (_canvas_fraction[n]/2)) for n in [0,1])
+        _scaled_strokepath.append(_pos)
 
     _draw = ImageDraw.Draw(_active_canvas)
 
@@ -75,11 +77,18 @@ def DrawStroke(canvas: Image, strokepath: list[tuple], thickness: float = 6.0):
                        fill=(0,0,0,255))
     return _active_canvas
 
-def DrawCharacter(strokes: list[list[tuple]],
+def DrawCharacter(strokes: list[list[tuple[int,int]]],
                   thickness: float | list[float] = 6.0,
                   margin: int = 1,
                   subdivision: int = 7,
                   mode: str = "RGBA", size: tuple[int,int] = (128,128), color: tuple[int,int,int,int] = (255,255,255,255)):
+    """
+    Constructs a PIL.Image from a list of brush strokes.
+
+    :param strokes: A list of lists of length-2 tuples. These define the 'cells' that the 'brush' passes through during a single line stroke.
+    :type strokes: list[list[tuple[int,int]]]
+
+    """
     if type(thickness) is list:
         if len(thickness) > 1 and len(thickness) != len(strokes):
             raise ValueError('strokes and thickness must be the same length!')
