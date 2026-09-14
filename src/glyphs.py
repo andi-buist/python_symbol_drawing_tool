@@ -1,4 +1,6 @@
 from PIL import Image, ImageDraw
+
+# TODO: potentially add named constructors? e.g. BrushStroke('topbar') -> [(1,1),(1,7)]
 class BrushStroke():
     def __init__(self, path: list[tuple[int,int]], thickness: int = 6.0, weight: int | list[int] = 3):
         if type(weight) is list:
@@ -84,6 +86,7 @@ class BrushStroke():
                         fill=(0,0,0,255))
         return _active_canvas
 
+# TODO: classify, convert canvas generation and BrushStroke.draw() calls to a Glyph.draw() call. Add defs, pronunciation, etc. Also fromJSON constructor?
 def DrawCharacter(strokes: list[BrushStroke]):
     """
     Constructs a PIL.Image from a list of brush strokes.
