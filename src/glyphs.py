@@ -1,6 +1,7 @@
 from PIL import Image, ImageDraw
 from typing import Literal
 
+STROKE_THICKNESS = 6.0
 GLYPH_MARGIN = 0.1
 
 def add_constants(cls):
@@ -35,7 +36,7 @@ def add_constants(cls):
 
 @add_constants 
 class BrushStroke():
-    def __init__(self, path: list[tuple[float, float]], thickness: float = 6.0, weight: int | list[int] = 4):
+    def __init__(self, path: list[tuple[float, float]], weight: int | list[int] = 4):
         if type(weight) is list:
             if len(weight) != len(path):
                 raise ValueError('A list of weights must be the same length as the path list')
@@ -44,7 +45,6 @@ class BrushStroke():
             raise ValueError('Brush stroke coordinates must be between 0.0 and 1.0')
 
         self.path = path
-        self.thickness = thickness
         self.weight = weight
 
     def pascal_row(self, n):
@@ -83,7 +83,7 @@ class BrushStroke():
             return result
         return bezier
 
-    def draw(self, canvas: Image):
+    def draw(self, canvas: Image, thickness: float = STROKE_THICKNESS):
         _active_canvas = canvas
 
         _canvas_area = tuple(x * (1 - GLYPH_MARGIN * 2) for x in _active_canvas.size)
@@ -110,7 +110,8 @@ class BrushStroke():
         _bezier_points = self.make_bezier(_scaled_path)([t/n_points for t in range(n_points + 1)])
 
         for i, centre in enumerate(_bezier_points):
-            _cur_thickness = (self.thickness - 1) * (len(_bezier_points) - i)/(len(_bezier_points)) + 1
+            # -1 ... +1 used to scale between STROKE_THICKNESS and 0
+            _cur_thickness = (thickness - 1) * (len(_bezier_points) - i)/(len(_bezier_points)) + 1
 
             _draw.ellipse((centre[0] - _cur_thickness,
                         centre[1] - _cur_thickness,
@@ -121,16 +122,18 @@ class BrushStroke():
 
 class LangParticle():
     PARTICLE_TYPES = Literal["noun", "verb", "adjective", "adverb", "pronoun", "preposition", "conjunction", "number"]
+    RADICAL_TYPES = Literal["horizontal", "vertical", "quarter"]
 
     def __init__(self, particle_type: PARTICLE_TYPES, definition: str | int, strokes: BrushStroke | list[BrushStroke]):
         if any((particle_type == "number" and type(definition) is not int, particle_type != "number" and type(definition) is int)):
             raise ValueError("LangParticle `particle_type` and `definition` are incompatible!")
 
-        self.glyph = self._generate_character(strokes)
+        self.strokes = strokes
+        self.glyph = self._generate_character()
         self.particle_type = particle_type
         self.definition = definition
 
-    def _generate_character(self, strokes: list[BrushStroke]):
+    def _generate_character(self):
         """
         Constructs a PIL.Image from a list of brush strokes.
 
@@ -140,10 +143,34 @@ class LangParticle():
         """
         _active_canvas = Image.new(mode = "RGBA", size = (128,128), color = (255,255,255,255))
 
-        if type(strokes) is list:
-            for stroke in strokes:
+        if type(self.strokes) is list:
+            for stroke in self.strokes:
                 _active_canvas = stroke.draw(_active_canvas)
         else:
-            _active_canvas = strokes.draw(_active_canvas)
+            _active_canvas = self.strokes.draw(_active_canvas)
+
+        return _active_canvas
+
+    def generate_radical(self, radical_type: RADICAL_TYPES):
+        """
+        Example of how we may generate smaller radicals
+        """
+        SIZE = 128
+
+        match radical_type:
+            case "horizontal":
+                _rad_size = (SIZE, SIZE//2)
+            case "vertical":
+                _rad_size = (SIZE//2, SIZE)
+            case "quarter":
+                _rad_size = (SIZE//2, SIZE//2)
+
+        _active_canvas = Image.new(mode = "RGBA", size = _rad_size, color = (255,255,255,255))
+
+        if type(self.strokes) is list:
+            for stroke in self.strokes:
+                _active_canvas = stroke.draw(_active_canvas, STROKE_THICKNESS/2)
+        else:
+            _active_canvas = self.strokes.draw(_active_canvas, STROKE_THICKNESS/2)
 
         return _active_canvas
